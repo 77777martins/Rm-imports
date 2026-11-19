@@ -3,6 +3,14 @@ import type { NextConfig } from "next";
 const isDev = process.env.NODE_ENV !== "production";
 
 /**
+ * HSTS e `upgrade-insecure-requests` só fazem sentido quando o site é servido
+ * via HTTPS. Ficam ativos em produção, exceto se APP_URL for explicitamente
+ * http:// (produção local, CI ou VPS antes do certificado) — nesse caso
+ * converteriam redirecionamentos internos para https e quebrariam a navegação.
+ */
+const enforceHttps = !isDev && !(process.env.APP_URL ?? "").startsWith("http://");
+
+/**
  * Content-Security-Policy.
  * Trade-off: 'unsafe-inline' em script-src é necessário para os scripts de
  * hidratação do Next sem nonce. Usar nonce exigiria renderização dinâmica de
@@ -20,7 +28,7 @@ const csp = [
   "form-action 'self'",
   "base-uri 'self'",
   "object-src 'none'",
-  ...(isDev ? [] : ["upgrade-insecure-requests"]),
+  ...(enforceHttps ? ["upgrade-insecure-requests"] : []),
 ].join("; ");
 
 const securityHeaders = [
@@ -30,7 +38,7 @@ const securityHeaders = [
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=()" },
   { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
-  ...(isDev ? [] : [{ key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" }]),
+  ...(enforceHttps ? [{ key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" }] : []),
 ];
 
 const nextConfig: NextConfig = {
