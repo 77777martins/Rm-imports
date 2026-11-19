@@ -27,11 +27,8 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
+      # O postinstall gera o Prisma Client (não requer banco).
       - run: npm ci
-      - name: Prisma Client
-        run: npx prisma generate
-        env:
-          DATABASE_URL: postgresql://placeholder:placeholder@localhost:5432/placeholder
       - run: npm run typecheck
       - run: npm run lint
       - run: npm test
@@ -68,7 +65,10 @@ jobs:
           cache: npm
 
       - name: Gerar segredo JWT efêmero
-        run: echo "JWT_ACCESS_SECRET=$(openssl rand -base64 48 | tr -d '\n')" >> "$GITHUB_ENV"
+        run: |
+          secret="$(openssl rand -base64 48 | tr -d '\n')"
+          echo "::add-mask::$secret"
+          echo "JWT_ACCESS_SECRET=$secret" >> "$GITHUB_ENV"
 
       - run: npm ci
       - name: Migrações e seed
@@ -108,7 +108,7 @@ jobs:
 
       - name: Logs do servidor
         if: failure()
-        run: cat server.log
+        run: cat server.log 2>/dev/null || echo "Servidor não chegou a ser iniciado."
 
       - name: Relatório do Playwright
         if: failure()

@@ -9,7 +9,9 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # 1) Dependências (cache por lockfile)
 FROM base AS deps
 COPY package.json package-lock.json ./
-RUN npm ci
+# --ignore-scripts: o postinstall (prisma generate) precisa do schema,
+# que só é copiado no estágio de build, onde o client é gerado explicitamente.
+RUN npm ci --ignore-scripts
 
 # 2) Build
 FROM base AS builder

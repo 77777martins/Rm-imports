@@ -93,9 +93,8 @@ node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
 # 3. (Opcional) Subir só o PostgreSQL via Docker
 docker compose up -d db
 
-# 4. Criar tabelas e gerar o Prisma Client
+# 4. Criar as tabelas (o Prisma Client é gerado automaticamente no npm install)
 npx prisma migrate deploy
-npx prisma generate
 
 # 5. Popular dados de demonstração
 npm run db:seed
@@ -274,7 +273,7 @@ O container roda como usuário sem privilégios e expõe `GET /api/health` para 
    DATABASE_URL="postgresql://..." npx prisma migrate deploy
    DATABASE_URL="postgresql://..." npm run db:seed
    ```
-4. Faça o deploy (o script `build` já executa `prisma generate`).
+4. Faça o deploy (o `postinstall` e o script `build` já executam `prisma generate`).
 
 > Em ambientes **serverless/multi-instância**, troque o rate limiter em memória (`src/server/rate-limit.ts`)
 > por Redis/Upstash — a interface `rateLimit(key, limit, windowMs)` permanece a mesma.
