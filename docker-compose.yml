@@ -1,0 +1,53 @@
+# Ambiente completo: PostgreSQL + migrações/seed + aplicação.
+#   cp .env.example .env   (ajuste JWT_ACCESS_SECRET)
+#   docker compose up -d db
+#   docker compose --profile tools run --rm migrate
+#   docker compose up -d app
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: medfacil
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d medfacil"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Aplica migrações e popula dados de demonstração (executar sob demanda)
+  migrate:
+    image: node:22-alpine
+    working_dir: /app
+    volumes:
+      - ./:/app
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/medfacil?schema=public
+    command: sh -c "npm ci && npx prisma migrate deploy && npx prisma db seed"
+    depends_on:
+      db:
+        condition: service_healthy
+    profiles: ["tools"]
+
+  app:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/medfacil?schema=public
+      NODE_ENV: production
+    ports:
+      - "3000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:

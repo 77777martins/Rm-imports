@@ -1,0 +1,282 @@
+// =====================================================================
+// MedFácil — modelo de dados (projeto de portfólio, dados fictícios)
+// Valores monetários armazenados em CENTAVOS (Int) para evitar erros
+// de ponto flutuante.
+// =====================================================================
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  CUSTOMER
+  ADMIN
+}
+
+enum PackagingType {
+  BOX
+  BOTTLE
+  TUBE
+  BLISTER
+  JAR
+  SPRAY
+}
+
+enum OrderStatus {
+  PENDING_PAYMENT
+  PAID
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELED
+}
+
+enum PaymentMethod {
+  PIX
+  CARD
+}
+
+enum PaymentStatus {
+  PENDING
+  APPROVED
+  DECLINED
+}
+
+enum CouponType {
+  PERCENT
+  FIXED
+  FREE_SHIPPING
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String   @db.VarChar(120)
+  email        String   @unique @db.VarChar(160)
+  passwordHash String
+  phone        String?  @db.VarChar(20)
+  role         Role     @default(CUSTOMER)
+  // Endereço padrão (opcional) — usado para pré-preencher o checkout
+  zipCode      String?  @db.VarChar(9)
+  street       String?  @db.VarChar(160)
+  number       String?  @db.VarChar(20)
+  complement   String?  @db.VarChar(80)
+  district     String?  @db.VarChar(80)
+  city         String?  @db.VarChar(80)
+  state        String?  @db.Char(2)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  orders              Order[]
+  refreshTokens       RefreshToken[]
+  passwordResetTokens PasswordResetToken[]
+  statusChanges       OrderStatusHistory[]
+
+  @@index([role, createdAt])
+}
+
+model RefreshToken {
+  id         String    @id @default(cuid())
+  tokenHash  String    @unique
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  replacedBy String?
+  userAgent  String?   @db.VarChar(255)
+  createdAt  DateTime  @default(now())
+
+  @@index([userId])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+}
+
+model Category {
+  id          String    @id @default(cuid())
+  name        String    @unique @db.VarChar(80)
+  slug        String    @unique @db.VarChar(90)
+  description String?   @db.VarChar(255)
+  icon        String    @default("pill") @db.VarChar(40)
+  isActive    Boolean   @default(true)
+  sortOrder   Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  products    Product[]
+}
+
+model Product {
+  id             String        @id @default(cuid())
+  sku            String        @unique @db.VarChar(32)
+  name           String        @db.VarChar(160)
+  slug           String        @unique @db.VarChar(180)
+  brand          String        @db.VarChar(80)
+  description    String        @db.Text
+  // Informações técnicas FICTÍCIAS (exibidas com aviso de demonstração)
+  technicalInfo  Json
+  categoryId     String
+  category       Category      @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  priceCents     Int
+  salePriceCents Int?
+  // Preço efetivo (promo ou cheio) — desnormalizado para filtro/ordenação no banco
+  finalPriceCents Int
+  stock          Int           @default(0)
+  imageUrl       String?       @db.VarChar(500)
+  packaging      PackagingType @default(BOX)
+  accentColor    String        @default("#16a34a") @db.VarChar(7)
+  isActive       Boolean       @default(true)
+  isFeatured     Boolean       @default(false)
+  soldCount      Int           @default(0)
+  ratingAvg      Float         @default(4.5)
+  ratingCount    Int           @default(0)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  orderItems OrderItem[]
+
+  @@index([categoryId, isActive])
+  @@index([isActive, isFeatured])
+  @@index([isActive, soldCount])
+  @@index([name])
+  @@index([finalPriceCents])
+}
+
+model Coupon {
+  id               String     @id @default(cuid())
+  code             String     @unique @db.VarChar(30)
+  description      String?    @db.VarChar(160)
+  type             CouponType
+  // PERCENT: 1–100 | FIXED: centavos | FREE_SHIPPING: ignorado
+  value            Int        @default(0)
+  minSubtotalCents Int        @default(0)
+  maxUses          Int?
+  usedCount        Int        @default(0)
+  expiresAt        DateTime?
+  isActive         Boolean    @default(true)
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+  orders           Order[]
+}
+
+model Order {
+  id                String        @id @default(cuid())
+  // Número legível exibido ao cliente (ex.: MF-20261118-AB12CD)
+  number            String        @unique @db.VarChar(24)
+  userId            String
+  user              User          @relation(fields: [userId], references: [id], onDelete: Restrict)
+  status            OrderStatus   @default(PENDING_PAYMENT)
+  subtotalCents     Int
+  discountCents     Int           @default(0)
+  shippingCents     Int
+  totalCents        Int
+  couponId          String?
+  coupon            Coupon?       @relation(fields: [couponId], references: [id], onDelete: SetNull)
+  couponCode        String?       @db.VarChar(30)
+  paymentMethod     PaymentMethod
+  paymentStatus     PaymentStatus @default(PENDING)
+  // Apenas dados NÃO sensíveis do cartão simulado. Nunca o número completo/CVV.
+  cardBrand         String?       @db.VarChar(20)
+  cardLast4         String?       @db.Char(4)
+  installments      Int           @default(1)
+  pixCode           String?       @db.Text
+  pixExpiresAt      DateTime?
+  // Snapshot do endereço de entrega
+  shippingName      String        @db.VarChar(120)
+  shippingZipCode   String        @db.VarChar(9)
+  shippingStreet    String        @db.VarChar(160)
+  shippingNumber    String        @db.VarChar(20)
+  shippingComplement String?      @db.VarChar(80)
+  shippingDistrict  String        @db.VarChar(80)
+  shippingCity      String        @db.VarChar(80)
+  shippingState     String        @db.Char(2)
+  shippingDays      Int
+  paidAt            DateTime?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  items         OrderItem[]
+  statusHistory OrderStatusHistory[]
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+  @@index([createdAt])
+}
+
+model OrderItem {
+  id             String   @id @default(cuid())
+  orderId        String
+  order          Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId      String
+  product        Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
+  // Snapshot do produto no momento da compra
+  productName    String   @db.VarChar(160)
+  productSku     String   @db.VarChar(32)
+  unitPriceCents Int
+  quantity       Int
+  totalCents     Int
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+model OrderStatusHistory {
+  id          String       @id @default(cuid())
+  orderId     String
+  order       Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  fromStatus  OrderStatus?
+  toStatus    OrderStatus
+  note        String?      @db.VarChar(255)
+  changedById String?
+  changedBy   User?        @relation(fields: [changedById], references: [id], onDelete: SetNull)
+  createdAt   DateTime     @default(now())
+
+  @@index([orderId, createdAt])
+}
+
+model Banner {
+  id        String   @id @default(cuid())
+  title     String   @db.VarChar(100)
+  subtitle  String?  @db.VarChar(200)
+  ctaLabel  String?  @db.VarChar(40)
+  // Somente caminhos internos (ex.: /produtos?categoria=vitaminas)
+  ctaHref   String?  @db.VarChar(200)
+  imageUrl  String?  @db.VarChar(500)
+  // Gradiente do fundo (2 cores hex)
+  colorFrom String   @default("#059669") @db.VarChar(7)
+  colorTo   String   @default("#0284c7") @db.VarChar(7)
+  isActive  Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive, sortOrder])
+}
+
+// Configuração única da loja (linha com id = "store")
+model StoreSettings {
+  id             String   @id @default("store")
+  storeName      String   @default("MedFácil") @db.VarChar(60)
+  tagline        String   @default("Sua saúde com mais facilidade") @db.VarChar(120)
+  logoUrl        String?  @db.VarChar(500)
+  primaryColor   String   @default("#059669") @db.VarChar(7)
+  secondaryColor String   @default("#0284c7") @db.VarChar(7)
+  contactEmail   String   @default("contato@medfacil.demo") @db.VarChar(160)
+  contactPhone   String   @default("(11) 4000-0000") @db.VarChar(20)
+  whatsapp       String   @default("5511900000000") @db.VarChar(20)
+  address        String   @default("Av. Demonstração, 1000 — São Paulo/SP") @db.VarChar(200)
+  freeShippingMinCents Int @default(19900)
+  updatedAt      DateTime @updatedAt
+}
