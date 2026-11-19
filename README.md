@@ -1,5 +1,7 @@
 # 💊 MedFácil — E-commerce farmacêutico (projeto de portfólio)
 
+![CI](https://github.com/77777martins/Rm-imports/actions/workflows/ci.yml/badge.svg)
+
 > **⚠️ Demonstração técnica.** MedFácil é uma loja **fictícia** criada exclusivamente para portfólio.
 > Produtos, marcas, registros, informações técnicas, preços, fretes e pagamentos são **simulados**.
 > Nada é vendido, nenhum medicamento é dispensado e nenhuma instituição financeira é contatada.
@@ -24,12 +26,13 @@ E-commerce full stack com vitrine, catálogo com busca/filtros, carrinho, checko
 
 ## 🧱 Stack
 
-- **Next.js 16** (App Router, Route Handlers, `proxy.ts`) · **React 19** · **TypeScript** estrito
+- **Next.js 16** (App Router, Route Handlers, `proxy.ts`) · **React 19** · **TypeScript 6** estrito
 - **Tailwind CSS 4** · **Framer Motion** · **Lucide React** · **Recharts** · **Sonner**
 - **TanStack React Query** · **Axios** · **React Hook Form** · **Zod 4** (schemas compartilhados front/back)
 - **Prisma 7** (driver adapter `pg`) · **PostgreSQL 16**
 - **jose** (JWT HS256) · **bcryptjs** · **Zustand** (carrinho)
-- **Vitest** (unitários + integração da API) · **Playwright** (E2E executado durante o desenvolvimento)
+- **Vitest** (unitários + integração da API) · **Playwright** (E2E) · **ESLint 9** (`eslint-config-next` + regras do React Compiler)
+- **GitHub Actions** (CI completo com PostgreSQL)
 
 > **Por que Next.js full stack?** Um único projeto com páginas e API integradas reduz a infraestrutura,
 > permite renderizar catálogo/produto no servidor (SEO e performance) e compartilhar validações Zod entre cliente e servidor.
@@ -60,6 +63,8 @@ src/
   components/            # UI por domínio (ui, layout, product, cart, checkout, admin...)
   hooks/ · stores/ · providers/
 tests/                   # Vitest: unitários + integração da API
+e2e/                     # Playwright: fluxos reais no navegador (desktop + mobile)
+.github/workflows/ci.yml # Pipeline de CI
 ```
 
 **Fluxo de uma requisição:** `proxy.ts` (CSRF/rotas) → `route.ts` → `handler()` (rate limit → auth → Zod) → `service` → Prisma → resposta JSON padronizada `{ error: { code, message, details } }`.
@@ -134,8 +139,12 @@ Validade futura qualquer (ex.: `12/30`) e CVV `123`.
 | `npm run dev` | Servidor de desenvolvimento |
 | `npm run build` / `npm start` | Build e servidor de produção |
 | `npm run typecheck` | Verificação de tipos |
+| `npm run lint` / `npm run lint:fix` | ESLint (com correção automática) |
+| `npm run check` | Typecheck + lint + testes unitários (rápido, antes de commitar) |
 | `npm test` | Testes unitários |
 | `npm run test:api` | Testes de integração da API (requer app rodando — ver abaixo) |
+| `npm run test:e2e` | Testes E2E com Playwright (sobe o `next dev` sozinho) |
+| `npm run test:e2e:ui` | Modo interativo do Playwright (depuração visual) |
 | `npm run db:migrate` | Cria/aplica migração em desenvolvimento |
 | `npm run db:seed` | Recria os dados de demonstração |
 | `npm run db:reset` | Apaga o banco, reaplica migrações e seed |
@@ -157,6 +166,33 @@ API_BASE_URL=http://localhost:3000 npm run test:api
 Os testes de integração cobrem: catálogo/filtros/ordenação, bloqueio CSRF, autorização por papel, cadastro,
 orçamento autoritativo, checkout PIX e cartão (aprovado/recusado), estoque insuficiente, **IDOR**, transições de status
 com devolução de estoque, CRUD de produto, dashboard, **rotação e detecção de reuso de refresh token** e recuperação de senha.
+
+### E2E (Playwright)
+
+```bash
+npm run db:seed
+npx playwright install chromium   # apenas na primeira vez
+npm run test:e2e                  # 26 testes · ~45 s
+```
+
+26 cenários em navegador real (desktop + Pixel 7): vitrine, busca, filtros, 404, carrinho e cupons, compra via PIX e
+cartão (recusado/aprovado), validação de cartão, cadastro, login, recuperação de senha, perfil, histórico,
+bloqueio do admin para clientes, CRUD de produtos e categorias, regras de exclusão, status de pedidos, clientes,
+configurações e responsividade (sem rolagem horizontal).
+
+Uma *fixture* automática **reprova qualquer teste em que a página emita erro de JavaScript** — a UI não pode
+quebrar silenciosamente. Os testes são repetíveis (dados únicos por execução) e rodam em série por compartilharem o banco.
+
+### 🔁 Integração contínua
+
+`.github/workflows/ci.yml` roda a cada push e pull request:
+
+1. **Qualidade** — `typecheck`, `lint` e testes unitários
+2. **Integração** (PostgreSQL 16 como serviço) — migrações + seed, **build de produção**, servidor
+   **standalone** (o mesmo artefato da imagem Docker), testes de integração da API e E2E com Playwright.
+   Em falha, publica o relatório do Playwright e os logs do servidor como artefatos.
+
+O segredo JWT do CI é gerado aleatoriamente a cada execução — nenhum segredo é versionado.
 
 ### ✅ Checklist de testes manuais
 
@@ -256,6 +292,9 @@ O container roda como usuário sem privilégios e expõe `GET /api/health` para 
 - **Ilustrações vetoriais geradas por produto** — catálogo visualmente consistente, leve e sem dependência de imagens de terceiros (o admin pode informar uma URL https).
 - **Tokenização de cartão simulada no navegador** — reproduz o fluxo real de gateways (PCI-DSS): o servidor nunca recebe o número do cartão.
 - **Indexação desativada por padrão** (`ALLOW_INDEXING`) — evita que a loja fictícia seja confundida com uma farmácia real em buscadores.
+- **HSTS e `upgrade-insecure-requests` condicionados ao `APP_URL`** — ativos em HTTPS; desativados quando a produção roda em `http://` (local/CI), onde converteriam redirecionamentos internos para `https://` e quebrariam a navegação.
+- **TypeScript 6 fixado** — o TypeScript 7 (compilador nativo) ainda não é suportado pelo `typescript-eslint`; atualizar quando houver suporte.
+- **`loading.tsx` do catálogo isolado em route group** — evita *soft 404* (status 200) na página de produto inexistente causado por streaming.
 
 ---
 
@@ -263,7 +302,6 @@ O container roda como usuário sem privilégios e expõe `GET /api/health` para 
 
 - Redis para rate limit/cache distribuído e fila de e-mails reais (Resend/SES) na recuperação de senha
 - Upload de imagens com armazenamento S3 + validação de MIME/tamanho
-- Testes E2E versionados com Playwright no CI (GitHub Actions) e ESLint configurado
 - Avaliações de produtos, lista de desejos e notificações de mudança de status
 - Auditoria de ações administrativas (quem alterou preço/estoque e quando)
 - Observabilidade (Sentry/OpenTelemetry) e logs estruturados centralizados

@@ -10,3 +10,6 @@ next-env.d.ts
 src/generated
 npm-debug.log*
 .DS_Store
+playwright-report
+test-results
+blob-report
