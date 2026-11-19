@@ -1,7 +1,7 @@
 import "server-only";
 import { randomBytes } from "node:crypto";
 import type { z } from "zod";
-import { Prisma } from "@/generated/prisma/client";
+import { type Prisma } from "@/generated/prisma/client";
 import type { OrderStatus } from "@/generated/prisma/enums";
 import type { cartQuoteSchema, checkoutSchema } from "@/lib/validators/checkout";
 import { ORDER_STATUS_TRANSITIONS, ORDER_STATUS_LABEL, MAX_INSTALLMENTS } from "@/lib/constants";

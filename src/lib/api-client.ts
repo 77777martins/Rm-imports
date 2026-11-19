@@ -1,4 +1,4 @@
-import axios, { AxiosError, type InternalAxiosRequestConfig } from "axios";
+import axios, { type AxiosError, type InternalAxiosRequestConfig } from "axios";
 
 export interface ApiErrorBody {
   error: { code: string; message: string; details: { path: string; message: string }[] | null };

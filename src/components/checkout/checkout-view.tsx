@@ -214,7 +214,7 @@ export function CheckoutView() {
             <div className="space-y-4">
               <div className="rounded-2xl border border-dashed border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">
                 <strong>Não digite dados reais.</strong> Use um cartão de teste:{" "}
-                {DEMO_CARDS.map((c, i) => (
+                {DEMO_CARDS.map((c) => (
                   <button
                     key={c.number}
                     type="button"

@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ExternalLink, LayoutDashboard, LogOut, Menu, Package, Settings, ShoppingBag, Tags, Users, X } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
 import { useLogout } from "@/components/layout/user-menu";
 import { cn } from "@/lib/utils";
+import { useOnPathnameChange } from "@/hooks/use-close-on-navigate";
 
 const NAV = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
@@ -47,8 +48,7 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
 export function AdminShell({ user, storeName, children }: { user: { name: string; email: string }; storeName: string; children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const logout = useLogout();
-  const pathname = usePathname();
-  useEffect(() => setOpen(false), [pathname]);
+  useOnPathnameChange(() => setOpen(false));
 
   const sidebar = (
     <div className="flex h-full flex-col bg-gradient-to-b from-primary-900 to-slate-950 p-4">

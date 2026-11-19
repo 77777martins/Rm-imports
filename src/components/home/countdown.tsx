@@ -15,9 +15,14 @@ function untilMidnight() {
 export function Countdown() {
   const [time, setTime] = useState<number[] | null>(null);
   useEffect(() => {
-    setTime(untilMidnight());
-    const t = setInterval(() => setTime(untilMidnight()), 1000);
-    return () => clearInterval(t);
+    // Atualiza apenas em callbacks de timer (o 1º tick ocorre logo após montar).
+    const tick = () => setTime(untilMidnight());
+    const first = setTimeout(tick, 0);
+    const t = setInterval(tick, 1000);
+    return () => {
+      clearTimeout(first);
+      clearInterval(t);
+    };
   }, []);
   return (
     <div className="flex items-center gap-2 rounded-xl bg-red-50 px-3 py-1.5 text-red-600" aria-label="Tempo restante das ofertas do dia">

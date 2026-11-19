@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Save } from "lucide-react";
@@ -25,7 +25,7 @@ export function SettingsStoreForm() {
     queryKey: ["admin", "settings"],
     queryFn: async () => (await api.get<{ settings: FormIn }>("/admin/settings")).data.settings,
   });
-  const { register, handleSubmit, control, formState, setError, watch } = useForm<FormIn, unknown, FormOut>({
+  const { register, handleSubmit, control, formState, setError } = useForm<FormIn, unknown, FormOut>({
     resolver: zodResolver(settingsSchema),
     values: data ? { ...data, logoUrl: data.logoUrl ?? "" } : undefined,
   });
@@ -38,10 +38,10 @@ export function SettingsStoreForm() {
     onError: (e) => handleFormError(e, setError),
   });
 
+  const [primary = "", secondary = "", storeName, tagline] = useWatch({ control, name: ["primaryColor", "secondaryColor", "storeName", "tagline"] });
+
   if (isLoading || !data) return <Skeleton className="h-[560px] rounded-2xl" />;
   const e = formState.errors;
-  const primary = watch("primaryColor");
-  const secondary = watch("secondaryColor");
 
   return (
     <form onSubmit={handleSubmit((v) => mutation.mutate(v))} noValidate className="grid items-start gap-6 xl:grid-cols-[1fr_320px]">
@@ -70,8 +70,8 @@ export function SettingsStoreForm() {
       <Card className="p-6 xl:sticky xl:top-24">
         <h2 className="mb-4 font-bold text-slate-900">Pré-visualização</h2>
         <div className="space-y-3" style={{ "--primary": /^#[0-9a-f]{6}$/i.test(primary) ? primary : undefined, "--secondary": /^#[0-9a-f]{6}$/i.test(secondary) ? secondary : undefined } as React.CSSProperties}>
-          <div className="flex items-center gap-2"><LogoMark /><span className="text-lg font-extrabold">{watch("storeName")}</span></div>
-          <div className="rounded-2xl bg-gradient-to-br from-primary to-secondary p-4 text-sm font-semibold text-white">{watch("tagline")}</div>
+          <div className="flex items-center gap-2"><LogoMark /><span className="text-lg font-extrabold">{storeName}</span></div>
+          <div className="rounded-2xl bg-gradient-to-br from-primary to-secondary p-4 text-sm font-semibold text-white">{tagline}</div>
           <div className="flex gap-2">
             <span className="rounded-lg bg-primary px-3 py-1.5 text-xs font-bold text-white">Primária</span>
             <span className="rounded-lg bg-secondary px-3 py-1.5 text-xs font-bold text-white">Secundária</span>

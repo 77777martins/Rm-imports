@@ -1,6 +1,6 @@
 import "server-only";
 import { NextResponse, type NextRequest } from "next/server";
-import { z, ZodError, type ZodType } from "zod";
+import { type z, ZodError, type ZodType } from "zod";
 import { Prisma } from "@/generated/prisma/client";
 import { AppError, Errors } from "./errors";
 import { logger } from "./logger";

@@ -1,6 +1,6 @@
 import "server-only";
 import type { z } from "zod";
-import { Prisma } from "@/generated/prisma/client";
+import { type Prisma } from "@/generated/prisma/client";
 import type { CatalogQuery } from "@/lib/validators/catalog";
 import type { productSchema, productQuickUpdateSchema } from "@/lib/validators/admin";
 import { LOW_STOCK_THRESHOLD, PAGE_SIZE } from "@/lib/constants";

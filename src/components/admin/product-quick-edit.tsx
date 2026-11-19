@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api } from "@/lib/api-client";
@@ -18,34 +18,33 @@ export interface QuickEditProduct {
   stock: number;
 }
 
-/** Atualização rápida de preço, preço promocional e estoque. */
-export function ProductQuickEdit({ product, onClose }: { product: QuickEditProduct | null; onClose: () => void }) {
+const FORM_ID = "product-quick-edit-form";
+
+/**
+ * Formulário interno: o estado nasce das props e é recriado via `key`
+ * quando outro produto é aberto (sem sincronização por efeito).
+ */
+function QuickEditForm({ product, onDone, onPendingChange }: { product: QuickEditProduct; onDone: () => void; onPendingChange: (p: boolean) => void }) {
   const qc = useQueryClient();
-  const [price, setPrice] = useState<number | null>(0);
-  const [sale, setSale] = useState<number | null>(null);
-  const [stock, setStock] = useState("0");
+  const [price, setPrice] = useState<number | null>(product.priceCents);
+  const [sale, setSale] = useState<number | null>(product.salePriceCents);
+  const [stock, setStock] = useState(String(product.stock));
   const [error, setError] = useState<string>();
 
-  useEffect(() => {
-    if (!product) return;
-    setPrice(product.priceCents);
-    setSale(product.salePriceCents);
-    setStock(String(product.stock));
-    setError(undefined);
-  }, [product]);
-
   const mutation = useMutation({
-    mutationFn: async () =>
-      api.patch(`/admin/products/${product!.id}`, { priceCents: price, salePriceCents: sale, stock: Number(stock) }),
+    mutationFn: async () => api.patch(`/admin/products/${product.id}`, { priceCents: price, salePriceCents: sale, stock: Number(stock) }),
+    onMutate: () => onPendingChange(true),
+    onSettled: () => onPendingChange(false),
     onSuccess: () => {
       toast.success("Produto atualizado.");
       qc.invalidateQueries({ queryKey: ["admin"] });
-      onClose();
+      onDone();
     },
     onError: (e) => handleFormError(e),
   });
 
-  const submit = () => {
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
     if (!price || price <= 0) return setError("Informe um preço válido.");
     if (sale !== null && sale >= price) return setError("O preço promocional deve ser menor que o preço normal.");
     if (!/^\d+$/.test(stock)) return setError("Estoque inválido.");
@@ -53,6 +52,19 @@ export function ProductQuickEdit({ product, onClose }: { product: QuickEditProdu
     mutation.mutate();
   };
 
+  return (
+    <form id={FORM_ID} className="space-y-4" onSubmit={submit} noValidate>
+      <MoneyInput label="Preço" required value={price} onChange={setPrice} />
+      <MoneyInput label="Preço promocional" allowEmpty hint="Deixe vazio para remover a promoção." value={sale} onChange={setSale} />
+      <Input label="Estoque" inputMode="numeric" value={stock} onChange={(e) => setStock(e.target.value.replace(/\D/g, ""))} />
+      {error && <p role="alert" className="text-sm font-medium text-red-600">{error}</p>}
+    </form>
+  );
+}
+
+/** Atualização rápida de preço, preço promocional e estoque. */
+export function ProductQuickEdit({ product, onClose }: { product: QuickEditProduct | null; onClose: () => void }) {
+  const [pending, setPending] = useState(false);
   return (
     <Modal
       open={!!product}
@@ -63,17 +75,11 @@ export function ProductQuickEdit({ product, onClose }: { product: QuickEditProdu
       footer={
         <>
           <Button variant="outline" onClick={onClose}>Cancelar</Button>
-          <Button onClick={submit} loading={mutation.isPending}>Salvar</Button>
+          <Button type="submit" form={FORM_ID} loading={pending}>Salvar</Button>
         </>
       }
     >
-      <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); submit(); }}>
-        <MoneyInput label="Preço" required value={price} onChange={setPrice} />
-        <MoneyInput label="Preço promocional" allowEmpty hint="Deixe vazio para remover a promoção." value={sale} onChange={setSale} />
-        <Input label="Estoque" inputMode="numeric" value={stock} onChange={(e) => setStock(e.target.value.replace(/\D/g, ""))} />
-        {error && <p role="alert" className="text-sm font-medium text-red-600">{error}</p>}
-        <button type="submit" hidden />
-      </form>
+      {product && <QuickEditForm key={product.id} product={product} onDone={onClose} onPendingChange={setPending} />}
     </Modal>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useForm, Controller } from "react-hook-form";
+import { useForm, useWatch, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Pencil, Plus, Trash2 } from "lucide-react";
@@ -24,7 +24,7 @@ type FormOut = z.output<typeof categorySchema>;
 
 function CategoryModal({ category, open, onClose }: { category: AdminCategory | null; open: boolean; onClose: () => void }) {
   const qc = useQueryClient();
-  const { register, handleSubmit, control, formState, setError, watch } = useForm<FormIn, unknown, FormOut>({
+  const { register, handleSubmit, control, formState, setError } = useForm<FormIn, unknown, FormOut>({
     resolver: zodResolver(categorySchema),
     values: category
       ? { name: category.name, description: category.description ?? "", icon: category.icon, isActive: category.isActive, sortOrder: category.sortOrder }
@@ -39,7 +39,7 @@ function CategoryModal({ category, open, onClose }: { category: AdminCategory | 
     },
     onError: (e) => handleFormError(e, setError),
   });
-  const icon = watch("icon") ?? "pill";
+  const icon = useWatch({ control, name: "icon" }) ?? "pill";
   const e = formState.errors;
 
   return (

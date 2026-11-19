@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Pencil, Plus, Trash2 } from "lucide-react";
@@ -25,7 +25,7 @@ const EMPTY: FormIn = { title: "", subtitle: "", ctaLabel: "Ver ofertas", ctaHre
 
 function BannerModal({ banner, open, onClose }: { banner: Banner | null; open: boolean; onClose: () => void }) {
   const qc = useQueryClient();
-  const { register, handleSubmit, control, formState, setError, watch } = useForm<FormIn, unknown, FormOut>({
+  const { register, handleSubmit, control, formState, setError } = useForm<FormIn, unknown, FormOut>({
     resolver: zodResolver(bannerSchema),
     values: banner ? { ...banner, subtitle: banner.subtitle ?? "", ctaLabel: banner.ctaLabel ?? "", ctaHref: banner.ctaHref ?? "", imageUrl: banner.imageUrl ?? "" } : EMPTY,
   });
@@ -38,15 +38,16 @@ function BannerModal({ banner, open, onClose }: { banner: Banner | null; open: b
     },
     onError: (e) => handleFormError(e, setError),
   });
+  const [title, subtitle, colorFrom, colorTo] = useWatch({ control, name: ["title", "subtitle", "colorFrom", "colorTo"] });
   const e = formState.errors;
   const submit = handleSubmit((v) => mutation.mutate(v));
 
   return (
     <Modal open={open} onClose={onClose} size="lg" title={banner ? "Editar banner" : "Novo banner"} footer={<><Button variant="outline" onClick={onClose}>Cancelar</Button><Button onClick={submit} loading={mutation.isPending}>Salvar</Button></>}>
       <form onSubmit={submit} className="grid gap-4 sm:grid-cols-2" noValidate>
-        <div className="rounded-2xl p-5 text-white sm:col-span-2" style={{ background: `linear-gradient(120deg, ${watch("colorFrom")}, ${watch("colorTo")})` }}>
-          <p className="text-lg font-extrabold">{watch("title") || "Título do banner"}</p>
-          <p className="text-sm text-white/85">{watch("subtitle")}</p>
+        <div className="rounded-2xl p-5 text-white sm:col-span-2" style={{ background: `linear-gradient(120deg, ${colorFrom}, ${colorTo})` }}>
+          <p className="text-lg font-extrabold">{title || "Título do banner"}</p>
+          <p className="text-sm text-white/85">{subtitle}</p>
         </div>
         <Input label="Título" required wrapperClassName="sm:col-span-2" error={e.title?.message} {...register("title")} />
         <Input label="Subtítulo" wrapperClassName="sm:col-span-2" error={e.subtitle?.message} {...register("subtitle")} />

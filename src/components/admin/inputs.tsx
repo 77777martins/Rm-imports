@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Input, FieldWrapper } from "@/components/ui/field";
 
 function centsToText(cents: number | null | undefined) {
@@ -20,12 +20,10 @@ interface MoneyInputProps {
 
 /** Campo monetário em reais que expõe o valor em CENTAVOS. */
 export function MoneyInput({ label, value, onChange, error, hint, required, allowEmpty, wrapperClassName }: MoneyInputProps) {
-  const [text, setText] = useState(centsToText(value));
+  // Enquanto o campo está em foco exibe o texto digitado; fora dele, o valor formatado.
+  const [text, setText] = useState("");
   const [focused, setFocused] = useState(false);
-
-  useEffect(() => {
-    if (!focused) setText(centsToText(value));
-  }, [value, focused]);
+  const display = focused ? text : centsToText(value);
 
   return (
     <Input
@@ -37,8 +35,11 @@ export function MoneyInput({ label, value, onChange, error, hint, required, allo
       placeholder={allowEmpty ? "—" : "0,00"}
       leftIcon={<span className="text-xs font-semibold">R$</span>}
       wrapperClassName={wrapperClassName}
-      value={text}
-      onFocus={() => setFocused(true)}
+      value={display}
+      onFocus={() => {
+        setText(centsToText(value));
+        setFocused(true);
+      }}
       onChange={(e) => {
         const raw = e.target.value.replace(/[^\d,.]/g, "");
         setText(raw);
@@ -46,10 +47,7 @@ export function MoneyInput({ label, value, onChange, error, hint, required, allo
         const n = Number(raw.replace(/\./g, "").replace(",", "."));
         if (Number.isFinite(n)) onChange(Math.round(n * 100));
       }}
-      onBlur={() => {
-        setFocused(false);
-        setText(centsToText(value));
-      }}
+      onBlur={() => setFocused(false)}
     />
   );
 }

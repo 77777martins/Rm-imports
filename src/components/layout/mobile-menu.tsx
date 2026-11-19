@@ -1,13 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { BadgePercent, LayoutDashboard, LogOut, Menu, Package, UserRound, X } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
 import { CategoryIcon } from "./category-icon";
 import { useLogout, type SessionUser } from "./user-menu";
+import { useOnPathnameChange } from "@/hooks/use-close-on-navigate";
 
 interface Props {
   categories: { id: string; name: string; slug: string; icon: string }[];
@@ -17,10 +17,9 @@ interface Props {
 
 export function MobileMenu({ categories, user, storeName }: Props) {
   const [open, setOpen] = useState(false);
-  const pathname = usePathname();
   const logout = useLogout();
 
-  useEffect(() => setOpen(false), [pathname]);
+  useOnPathnameChange(() => setOpen(false));
   useEffect(() => {
     document.body.style.overflow = open ? "hidden" : "";
     return () => {

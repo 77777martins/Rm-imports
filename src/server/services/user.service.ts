@@ -1,7 +1,7 @@
 import "server-only";
 import type { z } from "zod";
 import type { profileSchema } from "@/lib/validators/account";
-import { Prisma } from "@/generated/prisma/client";
+import { type Prisma } from "@/generated/prisma/client";
 import { prisma } from "../db";
 import { Errors } from "../errors";
 import { publicUserSelect } from "./auth.service";

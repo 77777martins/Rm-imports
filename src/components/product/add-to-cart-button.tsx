@@ -2,6 +2,7 @@
 
 import { ShoppingCart, Check } from "lucide-react";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useCartStore, type CartItem } from "@/stores/cart-store";
 import { Button, type ButtonSize } from "@/components/ui/button";
@@ -16,6 +17,7 @@ interface Props {
 }
 
 export function AddToCartButton({ product, quantity = 1, size = "md", className, label = "Adicionar" }: Props) {
+  const router = useRouter();
   const add = useCartStore((s) => s.add);
   const [added, setAdded] = useState(false);
   const outOfStock = product.stock <= 0;
@@ -30,7 +32,7 @@ export function AddToCartButton({ product, quantity = 1, size = "md", className,
     setAdded(true);
     setTimeout(() => setAdded(false), 1400);
     toast.success(`${product.name} adicionado ao carrinho`, {
-      action: { label: "Ver carrinho", onClick: () => (window.location.href = "/carrinho") },
+      action: { label: "Ver carrinho", onClick: () => router.push("/carrinho") },
     });
   };
 
